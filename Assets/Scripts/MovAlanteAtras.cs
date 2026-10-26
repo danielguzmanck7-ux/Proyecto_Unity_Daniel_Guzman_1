@@ -9,7 +9,8 @@ public class MovAlanteAtras : MonoBehaviour
     BoxCollider2D cajaChoque;
     Rigidbody2D enemigo;
     Animator anim;
-    int direccion = 0;
+    int direccion = 1; // 1 = derecha (+x), -1 = izquierda (-x)
+
     void Start()
     {
         anim = GetComponent<Animator>();
@@ -18,19 +19,30 @@ public class MovAlanteAtras : MonoBehaviour
     }
 
     void Update()
-    {        
-        transform.Translate(new Vector3(direccion * velocidad * Time.deltaTime, 0f, 0f));        
+    {
+        // Lanza un rayo desde el centro hacia donde se mueve el enemigo
+        float mitadAncho = cajaChoque.bounds.extents.x;
+        Vector2 origen = cajaChoque.bounds.center;
+        float distancia = mitadAncho + distanciaDeteccionPared;
 
-        if (enemigo.linearVelocityX == 0)
+        RaycastHit2D hit = Physics2D.Raycast(origen, Vector2.right * direccion, distancia, Pared);
+
+        // Si hay pared delante, da la vuelta
+        if (hit.collider != null)
         {
-            anim.SetInteger("estado",0);
-        }
-        else 
-        {
-            anim.SetInteger("estado",1);
+            direccion *= -1;
         }
 
-        cajaChoque.bounds.Expand(0.02f);
-        
+        // Movimiento con el Rigidbody2D (no con Translate)
+        enemigo.linearVelocity = new Vector2(direccion * velocidad, enemigo.linearVelocity.y);
+
+        // Gira el sprite según la dirección
+        Vector3 escala = transform.localScale;
+        escala.x = Mathf.Abs(escala.x) * direccion;
+        transform.localScale = escala;
+
+        // Animación: 1 si se mueve, 0 si está parado
+        int estado = Mathf.Abs(enemigo.linearVelocity.x) > 0.01f ? 1 : 0;
+        anim.SetInteger("estado", estado);
     }
 }

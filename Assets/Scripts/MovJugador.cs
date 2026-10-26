@@ -222,69 +222,46 @@ public class MovJugador : MonoBehaviour
 
     // Actualiza las animaciones según el movimiento.
     void ActualizarAnimacion()
+{
+    bool enSuelo = TocarSuelo();
+    float c = mover.ReadValue<Vector2>().x;
+
+    int estado;
+
+    if (!enSuelo)
     {
-        bool enSuelo = TocarSuelo();
-
-        float c = mover.ReadValue<Vector2>().x;
-
-        int estadoActual = anim.GetInteger("estado");
-
-        if (!enSuelo)
+        if (jugador.linearVelocityY < -0.1f)
         {
-            // Mantener las animaciones especiales hasta
-            // que termine su clip correspondiente.
-            if (estadoActual == 5 &&
-                anim.GetCurrentAnimatorStateInfo(0)
-                    .IsName("DobleSalto"))
-            {
-                AnimatorStateInfo info =
-                    anim.GetCurrentAnimatorStateInfo(0);
-
-                if (info.normalizedTime >= 1f)
-                {
-                    anim.SetInteger("estado", 1);
-                }
-
-                return;
-            }
-
-            if (estadoActual == 3 &&
-                anim.GetCurrentAnimatorStateInfo(0)
-                    .IsName("SaltoPared"))
-            {
-                AnimatorStateInfo info =
-                    anim.GetCurrentAnimatorStateInfo(0);
-
-                if (info.normalizedTime >= 1f)
-                {
-                    anim.SetInteger("estado", 1);
-                }
-
-                return;
-            }
-
-            // En el aire, utilizar la animación de salto normal.
-            if (estadoActual != 1 &&
-                estadoActual != 5 &&
-                estadoActual != 3)
-            {
-                anim.SetInteger("estado", 1);
-            }
-        }
-        else if (Mathf.Abs(c) > 0.1f)
-        {
-            anim.SetInteger("estado", 2);
+            estado = 6; // Caer
         }
         else
         {
-            anim.SetInteger("estado", 0);
+            int estadoActual = anim.GetInteger("estado");
+
+            if (estadoActual == 5)
+                estado = 5; // DobleSalto
+            else if (estadoActual == 3)
+                estado = 3; // SaltoPared
+            else
+                estado = 1; // Saltar
         }
     }
+    else if (Mathf.Abs(c) > 0.1f)
+    {
+        estado = 2; // Correr
+    }
+    else
+    {
+        estado = 0; // Estatico
+    }
+
+    anim.SetInteger("estado", estado);
+}
 
     // Detectar el contacto con el enemigo.
     void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.CompareTag("Enemy"))
+        if (collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Trap"))
         {
             Golpe();
         }
