@@ -20,6 +20,7 @@ public class MovJugador : MonoBehaviour
     [Header("Daño")]
     [SerializeField] float duracionGolpe = 0.4f;
     [SerializeField] int vidasMaximas = 3;
+    [SerializeField] AnadirVidasYManzanas estadisticas;
 
     int vidas;
     int contadorSaltos = 0;
@@ -203,19 +204,22 @@ public class MovJugador : MonoBehaviour
     }
 
     public void Golpe()
+{
+    if (recibiendoGolpe || muerto) return;
+
+    vidas--;
+
+    if (estadisticas != null)
+        estadisticas.RestarVida();
+
+    if (vidas <= 0)
     {
-        if (recibiendoGolpe || muerto) return;
-
-        vidas--;
-
-        if (vidas <= 0)
-        {
-            Morir();
-            return;
-        }
-
-        StartCoroutine(GolpeCoroutine());
+        Morir();
+        return;
     }
+
+    StartCoroutine(GolpeCoroutine());
+}
 
     IEnumerator GolpeCoroutine()
     {
