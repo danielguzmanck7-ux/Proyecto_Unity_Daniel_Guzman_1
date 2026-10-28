@@ -19,16 +19,21 @@ public class MovJugador : MonoBehaviour
 
     [Header("Daño")]
     [SerializeField] float duracionGolpe = 0.4f;
+    [SerializeField] int vidasMaximas = 3;
 
+    int vidas;
     int contadorSaltos = 0;
     int ladoPared = 0;
 
     bool recibiendoGolpe = false;
     bool impulsoParedActivo = false;
+    bool muerto = false;
+    bool saltoParedEnCurso = false;
 
     Rigidbody2D jugador;
     BoxCollider2D cuadradoChoque;
     Animator anim;
+    SpriteRenderer sprite;
 
     InputAction mover;
     InputAction saltar;
@@ -41,11 +46,14 @@ public class MovJugador : MonoBehaviour
         jugador = GetComponent<Rigidbody2D>();
         cuadradoChoque = GetComponent<BoxCollider2D>();
         anim = GetComponent<Animator>();
+        sprite = GetComponent<SpriteRenderer>();
+
+        vidas = vidasMaximas;
     }
 
     void Update()
     {
-        if (recibiendoGolpe)
+        if (muerto || recibiendoGolpe)
             return;
 
         Moverse();
@@ -56,65 +64,27 @@ public class MovJugador : MonoBehaviour
         ActualizarAnimacion();
     }
 
-    // Comprueba si el jugador está tocando el suelo.
     bool TocarSuelo()
     {
         Bounds bounds = cuadradoChoque.bounds;
 
-        Vector2 pies = new Vector2(
-            bounds.center.x,
-            bounds.min.y - 0.02f
-        );
+        Vector2 pies = new Vector2(bounds.center.x, bounds.min.y - 0.02f);
+        Vector2 tamano = new Vector2(bounds.size.x * 0.8f, 0.08f);
 
-        Vector2 tamano = new Vector2(
-            bounds.size.x * 0.8f,
-            0.08f
-        );
-
-        return Physics2D.OverlapBox(
-            pies,
-            tamano,
-            0f,
-            Floor
-        ) != null;
+        return Physics2D.OverlapBox(pies, tamano, 0f, Floor) != null;
     }
 
-    // Detecta paredes a izquierda y derecha.
     bool TocarPared()
     {
         Bounds bounds = cuadradoChoque.bounds;
 
-        float distancia = bounds.extents.x
-                          + distanciaDeteccionPared / 2f;
+        Vector2 tamano = new Vector2(distanciaDeteccionPared, bounds.size.y * 0.8f);
 
-        Vector2 tamano = new Vector2(
-            distanciaDeteccionPared,
-            bounds.size.y * 0.8f
-        );
+        Vector2 centroDerecha = new Vector2(bounds.max.x + distanciaDeteccionPared / 2f, bounds.center.y);
+        Vector2 centroIzquierda = new Vector2(bounds.min.x - distanciaDeteccionPared / 2f, bounds.center.y);
 
-        Vector2 centroDerecha = new Vector2(
-            bounds.max.x + distanciaDeteccionPared / 2f,
-            bounds.center.y
-        );
-
-        Vector2 centroIzquierda = new Vector2(
-            bounds.min.x - distanciaDeteccionPared / 2f,
-            bounds.center.y
-        );
-
-        bool derecha = Physics2D.OverlapBox(
-            centroDerecha,
-            tamano,
-            0f,
-            Pared
-        ) != null;
-
-        bool izquierda = Physics2D.OverlapBox(
-            centroIzquierda,
-            tamano,
-            0f,
-            Pared
-        ) != null;
+        bool derecha = Physics2D.OverlapBox(centroDerecha, tamano, 0f, Pared) != null;
+        bool izquierda = Physics2D.OverlapBox(centroIzquierda, tamano, 0f, Pared) != null;
 
         if (derecha)
         {
@@ -132,30 +102,20 @@ public class MovJugador : MonoBehaviour
         return false;
     }
 
-    // Salto de pared.
     bool SaltoPared()
     {
-        if (TocarSuelo())
-            return false;
+        if (TocarSuelo()) return false;
+        if (!TocarPared()) return false;
+        if (!saltar.WasPressedThisFrame()) return false;
 
-        if (!TocarPared())
-            return false;
+        jugador.linearVelocity = new Vector2(ladoPared * fuerzaPared, velocidadj);
 
-        if (!saltar.WasPressedThisFrame())
-            return false;
-
-        // Impulso en dirección contraria a la pared.
-        jugador.linearVelocity = new Vector2(
-            ladoPared * fuerzaPared,
-            velocidadj
-        );
-
-        // Permite realizar un doble salto después.
+        // Tras el salto de pared el jugador puede hacer un doble salto
         contadorSaltos = 1;
 
-        // Evita que Moverse() cancele el impulso.
         StartCoroutine(BloquearMovimientoPared());
 
+        saltoParedEnCurso = true;
         anim.SetInteger("estado", 3);
 
         return true;
@@ -164,101 +124,76 @@ public class MovJugador : MonoBehaviour
     IEnumerator BloquearMovimientoPared()
     {
         impulsoParedActivo = true;
-
         yield return new WaitForSeconds(duracionImpulsoPared);
-
         impulsoParedActivo = false;
+        saltoParedEnCurso = false;
     }
 
-    // Salto normal y doble salto.
     void Saltar()
     {
-        if (!saltar.WasPressedThisFrame())
-            return;
+        if (!saltar.WasPressedThisFrame()) return;
 
-        if (TocarSuelo())
-            contadorSaltos = 0;
+        // Solo salta si le queda algún salto disponible
+        if (contadorSaltos >= 2) return;
 
-        if (contadorSaltos >= 2)
-            return;
-
-        jugador.linearVelocity = new Vector2(
-            jugador.linearVelocityX,
-            velocidadj
-        );
-
+        jugador.linearVelocity = new Vector2(jugador.linearVelocity.x, velocidadj);
         contadorSaltos++;
 
-        if (contadorSaltos == 1)
-        {
-            anim.SetInteger("estado", 1);
-        }
-        else
-        {
-            anim.SetInteger("estado", 5);
-        }
+        anim.SetInteger("estado", contadorSaltos == 1 ? 1 : 5);
     }
 
-    // Movimiento horizontal.
     void Moverse()
     {
         float c = mover.ReadValue<Vector2>().x;
 
-        // No cancelar el impulso horizontal del salto de pared.
         if (!impulsoParedActivo)
         {
-            jugador.linearVelocity = new Vector2(
-                c * velocidad,
-                jugador.linearVelocityY
-            );
+            jugador.linearVelocity = new Vector2(c * velocidad, jugador.linearVelocity.y);
         }
 
-        // Restablecer los saltos al tocar el suelo.
-        if (TocarSuelo())
+        // Girar el sprite según la dirección
+        if (c > 0.01f) sprite.flipX = false;
+        else if (c < -0.01f) sprite.flipX = true;
+
+        // Restablecer saltos solo cuando está en el suelo y no subiendo
+        if (TocarSuelo() && jugador.linearVelocity.y <= 0.01f)
         {
             contadorSaltos = 0;
         }
     }
 
-    // Actualiza las animaciones según el movimiento.
     void ActualizarAnimacion()
-{
-    bool enSuelo = TocarSuelo();
-    float c = mover.ReadValue<Vector2>().x;
-
-    int estado;
-
-    if (!enSuelo)
     {
-        if (jugador.linearVelocityY < -0.1f)
+        if (muerto) return;
+
+        bool enSuelo = TocarSuelo();
+        float c = mover.ReadValue<Vector2>().x;
+
+        int estado;
+
+        if (saltoParedEnCurso)
         {
-            estado = 6; // Caer
+            estado = 3;
+        }
+        else if (!enSuelo)
+        {
+            if (jugador.linearVelocity.y < -0.1f)
+                estado = 6; // caer
+            else
+                estado = anim.GetInteger("estado") == 5 ? 5 : 1;
+        }
+        else if (Mathf.Abs(c) > 0.1f)
+        {
+            estado = 2; // correr
         }
         else
         {
-            int estadoActual = anim.GetInteger("estado");
-
-            if (estadoActual == 5)
-                estado = 5; // DobleSalto
-            else if (estadoActual == 3)
-                estado = 3; // SaltoPared
-            else
-                estado = 1; // Saltar
+            estado = 0; // estático
         }
-    }
-    else if (Mathf.Abs(c) > 0.1f)
-    {
-        estado = 2; // Correr
-    }
-    else
-    {
-        estado = 0; // Estatico
+
+        anim.SetInteger("estado", estado);
     }
 
-    anim.SetInteger("estado", estado);
-}
-
-    // Detectar el contacto con el enemigo.
     void OnCollisionEnter2D(Collision2D collision)
     {
         if (collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("Trap"))
@@ -269,8 +204,15 @@ public class MovJugador : MonoBehaviour
 
     public void Golpe()
     {
-        if (recibiendoGolpe)
+        if (recibiendoGolpe || muerto) return;
+
+        vidas--;
+
+        if (vidas <= 0)
+        {
+            Morir();
             return;
+        }
 
         StartCoroutine(GolpeCoroutine());
     }
@@ -278,13 +220,18 @@ public class MovJugador : MonoBehaviour
     IEnumerator GolpeCoroutine()
     {
         recibiendoGolpe = true;
-
         anim.SetInteger("estado", 4);
-
         jugador.linearVelocity = Vector2.zero;
 
         yield return new WaitForSeconds(duracionGolpe);
 
         recibiendoGolpe = false;
+    }
+
+    void Morir()
+    {
+        muerto = true;
+        jugador.linearVelocity = Vector2.zero;
+        anim.SetInteger("estado", 7);
     }
 }
