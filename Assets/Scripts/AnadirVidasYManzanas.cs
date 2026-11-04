@@ -5,32 +5,34 @@ public class AnadirVidasYManzanas : MonoBehaviour
 {
     [SerializeField] TextMeshProUGUI textoFrutas;
     [SerializeField] TextMeshProUGUI textoVidas;
+    [SerializeField] int vidasIniciales = 3;
+    [SerializeField] int manzanasPorVida = 3;
 
-    int contadorV = 3;
+    int contadorV;
     int contadorF = 0;
 
-    void Start()
+    public int Vidas => contadorV;
+
+    void Awake()
     {
-        ActualizarTextos();
+        contadorV = vidasIniciales;
     }
+
+    void Start() => ActualizarTextos();
 
     public void SumarFruta()
     {
         contadorF++;
+
+        if (contadorF % manzanasPorVida == 0)
+            contadorV++;
+
         ActualizarTextos();
     }
 
-    public void RestarVida()
-    {
-        contadorV--;
-        ActualizarTextos();
-    }
-
-    public void SumarVida()
-    {
-        contadorV++;
-        ActualizarTextos();
-    }
+    public void RestarVida() { contadorV--; ActualizarTextos(); }
+    public void SumarVida()  { contadorV++; ActualizarTextos(); }
+    public void ReiniciarVidas() { contadorV = vidasIniciales; ActualizarTextos(); }
 
     void ActualizarTextos()
     {

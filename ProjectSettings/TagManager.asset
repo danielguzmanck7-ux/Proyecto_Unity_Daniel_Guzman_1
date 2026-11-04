@@ -15,7 +15,7 @@ TagManager:
   - Floor
   - Water
   - UI
-  - Pared
+  - 
   - Fondo
   - Mundo
   - 
@@ -53,9 +53,6 @@ TagManager:
     locked: 0
   - name: Floor
     uniqueID: 1085664063
-    locked: 0
-  - name: Pared
-    uniqueID: 3012905259
     locked: 0
   m_RenderingLayers:
   - Default
