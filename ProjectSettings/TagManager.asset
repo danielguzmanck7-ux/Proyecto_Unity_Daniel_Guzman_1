@@ -8,6 +8,7 @@ TagManager:
   - Trap
   - Colleccionable
   - Plataformas
+  - Checkpoint
   layers:
   - Default
   - TransparentFX
