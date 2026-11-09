@@ -6,6 +6,9 @@ public class PlayerMovement : MonoBehaviour
     [Header("Capas")]
     [SerializeField] LayerMask Floor;
 
+    [Header("Caída")]
+    [SerializeField] float limiteY = -10f;   // below this height the player dies
+
     [Header("Movimiento")]
     [SerializeField] float velocidad = 5f;
     [SerializeField] float velocidadj = 5f;
@@ -44,8 +47,20 @@ public class PlayerMovement : MonoBehaviour
     {
         if (!salud.PuedeActuar) return;
 
+        if (transform.position.y < limiteY)
+        {
+            salud.Morir();
+            return;
+        }
+
         Moverse();
         Saltar();
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(new Vector3(-1000f, limiteY, 0f), new Vector3(1000f, limiteY, 0f));
     }
 
     bool TocarSuelo()
